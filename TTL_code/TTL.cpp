@@ -217,7 +217,7 @@ int main(int argc, char *argv[]) {
 	read_sdat(go_dat, gi_dat, g_dat_deg, node_num);
 	bus_num++;
 	printf("# of edges: %d\n", edge_num);
-	//printf("# of Bus: %d\n", bus_num);
+	printf("# of Bus: %d\n", bus_num);
 
 	// select the job
 	usage(go_dat, gi_dat, g_dat_deg, label_in, label_out, node_order, order_node, label_uv_in, label_uv_out, label_c_in, label_c_out);
@@ -244,9 +244,9 @@ int get_node_num(char data_file[]) {
 * read_gdata() read the road network dataset
 ****************************************************************/
 int read_gdata(struct graph_data_out go_dat[], struct graph_data_in gi_dat[], struct graph_data_deg g_dat_deg[]) {
-	long nod = 0, to_nod = 0, s_t = 0, bid = 0;// node, to node, start time, duration, bus id
+	long nod = 0, to_nod = 0, s_t = 0, bid = 0, du2;// node, to node, start time, duration, bus id
 	int oB = 0, iB = 0;
-	double du = 0;
+	long du = 0, du3 = 60;
 	FILE *data1;
 
 	data1 = fopen(data_file, "r");
@@ -270,15 +270,16 @@ int read_gdata(struct graph_data_out go_dat[], struct graph_data_in gi_dat[], st
 
 			fscanf(data1, "%d %d %d", &s_t, &du, &bid);
 
+			if (bid > 5000) bid /=10 ;
 			if (bid > bus_num) bus_num = bid;
-
+			du2 = du / du3;
 			go_ptr = (struct graph_data_out*)malloc(sizeof(struct graph_data_out));// out edge of 'nod'
 			go_ptr->to_node = to_nod;
 			go_ptr->ostart_t = s_t;
 			go_ptr->oend_t = s_t + du;
 			go_ptr->ob_id = bid;
 			go_ptr->oran = 0;
-			go_ptr->cost = ceil(du / 3600);
+			go_ptr->cost = du2;
 			go_ptr->onext = NULL;
 			go_hptr->onext = go_ptr;
 			go_hptr = go_hptr->onext;
@@ -288,7 +289,7 @@ int read_gdata(struct graph_data_out go_dat[], struct graph_data_in gi_dat[], st
 			gi_ptr->istart_t = s_t;
 			gi_ptr->iend_t = s_t + du;
 			gi_ptr->ib_id = bid;
-			gi_ptr->cost = ceil(du / 3600);
+			gi_ptr->cost = du2;
 			gi_ptr->inext = NULL;
 			gi_hptr->inext = gi_ptr;
 			gi_hptr = gi_hptr->inext;
@@ -309,44 +310,45 @@ int read_sdat(struct graph_data_out go_dat[], struct graph_data_in gi_dat[], str
 	long i = 0, j = 0, k = 0, deg = 0;
 	graph_data_out go_ins;
 	graph_data_in gi_ins;
-	for (i = 0; i < node_num; i++){
+	for (i = 0; i < node_num; i++) {
 
 		deg = g_dat_deg[i].out_deg;//out
-		for (j = 1; j < deg; j++){
+		for (j = 1; j < deg; j++) {
 
 			go_ptr = &go_dat[i];
-			if (go_ptr->onext != NULL){
+			if (go_ptr->onext != NULL) {
 				go_ptr = go_ptr->onext;
 			}
-			else{
+			else {
 				goto next;
 			}
-			while (go_ptr->onext != NULL){
+			while (go_ptr->onext != NULL) {
 				go_ptr2 = go_ptr->onext;
 
-				if (go_ptr->ostart_t > go_ptr2->ostart_t){
+				if (go_ptr->ostart_t > go_ptr2->ostart_t) {
 					//	printf("%d-%d\n", gi_ptr->istart_t, gi_ptr2->istart_t);
 
 					go_ins.ostart_t = go_ptr->ostart_t;
 					go_ins.oend_t = go_ptr->oend_t;
 					go_ins.to_node = go_ptr->to_node;
 					go_ins.ob_id = go_ptr->ob_id;
-
+					go_ins.cost = go_ptr->cost;
 
 					go_ptr->ostart_t = go_ptr2->ostart_t;
 					go_ptr->oend_t = go_ptr2->oend_t;
 					go_ptr->to_node = go_ptr2->to_node;
 					go_ptr->ob_id = go_ptr2->ob_id;
+					go_ptr->cost = go_ptr2->cost;
 
 					go_ptr2->ostart_t = go_ins.ostart_t;
 					go_ptr2->oend_t = go_ins.oend_t;
 					go_ptr2->to_node = go_ins.to_node;
 					go_ptr2->ob_id = go_ins.ob_id;
-
+					go_ptr2->cost = go_ins.cost;
 
 
 				}
-				else{
+				else {
 					go_ptr = go_ptr->onext;
 				}
 			}
@@ -361,41 +363,43 @@ int read_sdat(struct graph_data_out go_dat[], struct graph_data_in gi_dat[], str
 
 
 		deg = g_dat_deg[i].in_deg;//in
-		for (j = 1; j < deg; j++){
+		for (j = 1; j < deg; j++) {
 
 			gi_ptr = &gi_dat[i];
-			if (gi_ptr->inext != NULL){
+			if (gi_ptr->inext != NULL) {
 				gi_ptr = gi_ptr->inext;
 			}
-			else{
+			else {
 				goto next2;
 			}
-			while (gi_ptr->inext != NULL){
+			while (gi_ptr->inext != NULL) {
 				gi_ptr2 = gi_ptr->inext;
 
-				if (gi_ptr->istart_t < gi_ptr2->istart_t){
+				if (gi_ptr->istart_t < gi_ptr2->istart_t) {
 					//	printf("%d-%d\n", gi_ptr->istart_t, gi_ptr2->istart_t);
 
 					gi_ins.istart_t = gi_ptr->istart_t;
 					gi_ins.iend_t = gi_ptr->iend_t;
 					gi_ins.from_node = gi_ptr->from_node;
 					gi_ins.ib_id = gi_ptr->ib_id;
+					gi_ins.cost = gi_ptr->cost;
 
 
 					gi_ptr->istart_t = gi_ptr2->istart_t;
 					gi_ptr->iend_t = gi_ptr2->iend_t;
 					gi_ptr->from_node = gi_ptr2->from_node;
 					gi_ptr->ib_id = gi_ptr2->ib_id;
+					gi_ptr->cost = gi_ptr2->cost;
 
 					gi_ptr2->istart_t = gi_ins.istart_t;
 					gi_ptr2->iend_t = gi_ins.iend_t;
 					gi_ptr2->from_node = gi_ins.from_node;
 					gi_ptr2->ib_id = gi_ins.ib_id;
-
+					gi_ptr2->cost = gi_ins.cost;
 
 
 				}
-				else{
+				else {
 					gi_ptr = gi_ptr->inext;
 				}
 			}
@@ -741,7 +745,7 @@ void build_index(struct graph_data_out go_dat[], struct graph_data_in gi_dat[], 
 	wt *= 60;
 
 	while (order_ptr < node_num) { // for 1:N 
-		//printf("node%d\n", order_ptr);
+		printf("node: %d order: %d  \n", node_order[order_ptr], order_ptr);
 		deg_num = g_dat_deg[node_order[order_ptr]].out_deg;
 		while (lab == 0) {
 			t = -1, deg = 0, hp = 1, heap_ptr = 1;// init
@@ -775,7 +779,8 @@ void build_index(struct graph_data_out go_dat[], struct graph_data_in gi_dat[], 
 			}
 
 			if (t != -1) {// have found a td
-				printf("order: %d out-deg: %d t: %d \n", order_ptr, deg_num, t);
+			
+
 				deg_num--;
 				pt = t, deg = 0;
 				eflag[node_order[order_ptr]].eout[t_deg] = 1;
@@ -814,7 +819,7 @@ void build_index(struct graph_data_out go_dat[], struct graph_data_in gi_dat[], 
 
 
 				while (hp < heap_ptr) { //dijk search
-					//printf("order: %d out-deg: %d pt: %d heap: %d/%d\n", order_ptr, deg_num, pt, hp, heap_ptr);
+					
 					flag = 0;
 
 
@@ -834,41 +839,43 @@ void build_index(struct graph_data_out go_dat[], struct graph_data_in gi_dat[], 
 							go_ptr = &go_dat[heap[hp].y];
 							go_ptr = go_ptr->onext;
 							while (go_ptr != NULL) {
-								if (go_ptr->ostart_t >= (htb[heap[hp].y].eat + wt)) {
-									if (go_ptr->oend_t < timekeep[go_ptr->to_node]){
-										if (g_dat_deg[go_ptr->to_node].in_deg != 0 && go_ptr->to_node != node_order[order_ptr]) {
-											timekeep[go_ptr->to_node] = go_ptr->oend_t;
-											heap[heap_ptr].x = heap[hp].y;
-											heap[heap_ptr].y = go_ptr->to_node;
-											heap[heap_ptr].td = go_ptr->ostart_t;
-											heap[heap_ptr].ta = go_ptr->oend_t;
-											if (go_ptr->ob_id != heap[hp].b) {
-												heap[heap_ptr].b = -1;
+
+								if (go_ptr->oend_t < timekeep[go_ptr->to_node]) {
+									if (g_dat_deg[go_ptr->to_node].in_deg != 0 && go_ptr->to_node != node_order[order_ptr]) {
+										if (go_ptr->ob_id != heap[hp].b) {
+											if (go_ptr->ostart_t < (htb[heap[hp].y].eat + wt)) goto no;
+											heap[heap_ptr].b = -1;
+										}
+										else {
+											heap[heap_ptr].b = heap[hp].b;
+										}
+										timekeep[go_ptr->to_node] = go_ptr->oend_t;
+										heap[heap_ptr].x = heap[hp].y;
+										heap[heap_ptr].y = go_ptr->to_node;
+										heap[heap_ptr].td = go_ptr->ostart_t;
+										heap[heap_ptr].ta = go_ptr->oend_t;
+
+										if (heap[hp].p == -1) {
+											heap[heap_ptr].p = heap[hp].y;
+										}
+										else {
+											if (order_node[heap[hp].p] < order_node[heap[hp].y]) {
+												heap[heap_ptr].p = heap[hp].p;
 											}
 											else {
-												heap[heap_ptr].b = heap[hp].b;
-											}
-											if (heap[hp].p == -1) {
 												heap[heap_ptr].p = heap[hp].y;
 											}
-											else {
-												if (order_node[heap[hp].p] < order_node[heap[hp].y]) {
-													heap[heap_ptr].p = heap[hp].p;
-												}
-												else {
-													heap[heap_ptr].p = heap[hp].y;
-												}
-											}
-
-											heap_ptr++;
 										}
+
+										heap_ptr++;
 									}
 								}
+							no:
 								if (go_ptr->onext != NULL) {
 									go_ptr = go_ptr->onext;
 								}
 								else {
-									*heap = sort_hp(heap, hp, heap_ptr - 1, 0);
+									*heap = sort_hp(heap, hp + 1, heap_ptr - 1, 0);
 									break;
 								}
 
@@ -881,7 +888,7 @@ void build_index(struct graph_data_out go_dat[], struct graph_data_in gi_dat[], 
 				for (i = 0; i < node_num; i++) { // insert labels
 
 					if (i != node_order[order_ptr] && htb[i].eat != 999999) {
-
+						
 						flag = 0;
 
 						iind_ptr1 = &label_in[i];
@@ -966,7 +973,8 @@ void build_index(struct graph_data_out go_dat[], struct graph_data_in gi_dat[], 
 							iind_ptr2->iindnt = NULL;
 							iind_ptr1->iindnt = iind_ptr2;
 							fprintf(labin, "%ld %ld %ld %ld %ld %ld\n", i, iind_ptr2->iui, iind_ptr2->itd, iind_ptr2->ita, iind_ptr2->ibv, iind_ptr2->ipv);
-							//	printf("in: i: %d: ui: %ld td: %ld ta: %ld bv: %ld pv: %ld\n", i, iind_ptr2->iui, iind_ptr2->itd, iind_ptr2->ita, iind_ptr2->ibv, iind_ptr2->ipv);
+							//		printf("in: i: %d: ui: %ld td: %ld ta: %ld bv: %ld pv: %ld\n", i, iind_ptr2->iui, iind_ptr2->itd/3600, iind_ptr2->ita/3600, iind_ptr2->ibv, iind_ptr2->ipv);
+							
 						}
 						else {
 							flag = 0;
@@ -1013,7 +1021,7 @@ void build_index(struct graph_data_out go_dat[], struct graph_data_in gi_dat[], 
 			}
 
 			if (t != 999999) {// have found a ta
-				printf("order: %d in-deg: %d t: %d \n", order_ptr, deg_num, t);
+				
 				pt = t, deg = 0;
 				eflag[node_order[order_ptr]].ein[t_deg] = 1;
 				heap[heap_ptr].x = gi_hptr->from_node;// add min ta edge to heap
@@ -1050,12 +1058,11 @@ void build_index(struct graph_data_out go_dat[], struct graph_data_in gi_dat[], 
 				}
 
 				while (hp < heap_ptr) { //dijk search
-					//printf("order: %d in-deg: %d pt: %d heap: %d/%d\n", order_ptr, deg_num, pt, hp, heap_ptr);
+					
 					flag = 0;
 
-
 					if (htb[heap[hp].y].eat == -1) flag = 1;
-					if (heap[hp].td > htb[heap[hp].x].eat && (heap[hp].ta + 10) <= htb[heap[hp].y].eat) flag = 1;
+					if (heap[hp].td > htb[heap[hp].x].eat && (heap[hp].ta) <= htb[heap[hp].y].eat) flag = 1;
 					if (flag == 1) { // update htb
 						htb[heap[hp].x].eat = heap[hp].td;
 						htb[heap[hp].x].piv = heap[hp].p;
@@ -1070,41 +1077,43 @@ void build_index(struct graph_data_out go_dat[], struct graph_data_in gi_dat[], 
 							gi_ptr = &gi_dat[heap[hp].x];
 							gi_ptr = gi_ptr->inext;
 							while (gi_ptr != NULL) {
-								if ((gi_ptr->iend_t + wt) <= htb[heap[hp].x].eat) {
-									if (gi_ptr->istart_t > timekeep[gi_ptr->from_node]){
-										if (g_dat_deg[gi_ptr->from_node].out_deg != 0 && gi_ptr->from_node != node_order[order_ptr]) {
-											timekeep[gi_ptr->from_node] = gi_ptr->istart_t;
-											heap[heap_ptr].x = gi_ptr->from_node;
-											heap[heap_ptr].y = heap[hp].x;
-											heap[heap_ptr].td = gi_ptr->istart_t;
-											heap[heap_ptr].ta = gi_ptr->iend_t;
-											if (gi_ptr->ib_id != heap[hp].b) {
-												heap[heap_ptr].b = -1;
+
+								if (gi_ptr->istart_t > timekeep[gi_ptr->from_node]) {
+									if (g_dat_deg[gi_ptr->from_node].out_deg != 0 && gi_ptr->from_node != node_order[order_ptr]) {
+										if (gi_ptr->ib_id != heap[hp].b) {
+											if ((gi_ptr->iend_t + wt) > htb[heap[hp].x].eat) goto no2;
+											heap[heap_ptr].b = -1;
+										}
+										else {
+											heap[heap_ptr].b = heap[hp].b;
+										}
+										timekeep[gi_ptr->from_node] = gi_ptr->istart_t;
+										heap[heap_ptr].x = gi_ptr->from_node;
+										heap[heap_ptr].y = heap[hp].x;
+										heap[heap_ptr].td = gi_ptr->istart_t;
+										heap[heap_ptr].ta = gi_ptr->iend_t;
+
+										if (heap[hp].p == -1) {
+											heap[heap_ptr].p = heap[hp].x;
+										}
+										else {
+											if (order_node[heap[hp].p] < order_node[heap[hp].x]) {
+												heap[heap_ptr].p = heap[hp].p;
 											}
 											else {
-												heap[heap_ptr].b = heap[hp].b;
-											}
-											if (heap[hp].p == -1) {
 												heap[heap_ptr].p = heap[hp].x;
 											}
-											else {
-												if (order_node[heap[hp].p] < order_node[heap[hp].x]) {
-													heap[heap_ptr].p = heap[hp].p;
-												}
-												else {
-													heap[heap_ptr].p = heap[hp].x;
-												}
-											}
-
-											heap_ptr++;
 										}
+
+										heap_ptr++;
 									}
 								}
+							no2:
 								if (gi_ptr->inext != NULL) {
 									gi_ptr = gi_ptr->inext;
 								}
 								else {
-									*heap = sort_hp2(heap, hp, heap_ptr - 1, 0);
+									*heap = sort_hp2(heap, hp + 1, heap_ptr - 1, 0);
 									break;
 								}
 							}
@@ -1116,6 +1125,7 @@ void build_index(struct graph_data_out go_dat[], struct graph_data_in gi_dat[], 
 				for (i = 0; i < node_num; i++) { // insert labels
 
 					if (i != node_order[order_ptr] && htb[i].eat != -1) {
+				
 
 						flag = 0;
 						oind_ptr1 = &label_out[i];
@@ -1200,7 +1210,8 @@ void build_index(struct graph_data_out go_dat[], struct graph_data_in gi_dat[], 
 							oind_ptr2->oindnt = NULL;
 							oind_ptr1->oindnt = oind_ptr2;
 							fprintf(labout, "%ld %ld %ld %ld %ld %ld\n", i, oind_ptr2->oui, oind_ptr2->otd, oind_ptr2->ota, oind_ptr2->obv, oind_ptr2->opv);
-							//printf("out: i: %ld: ui: %ld td: %ld ta: %ld bv: %ld pv: %ld\n", i, oind_ptr2->oui, oind_ptr2->otd/3600, oind_ptr2->ota/3600, oind_ptr2->obv, oind_ptr2->opv);
+							//	printf("out: i: %ld: ui: %ld td: %ld ta: %ld bv: %ld pv: %ld\n", i, oind_ptr2->oui, oind_ptr2->otd/3600, oind_ptr2->ota/3600, oind_ptr2->obv, oind_ptr2->opv);
+							
 						}
 						else {
 							flag = 0;
@@ -1239,11 +1250,13 @@ void build_index_uv(struct graph_data_out go_dat[], struct graph_data_in gi_dat[
 	long hp = 0, heap_ptr = 0, i = 0, j = 0, k = 0, deg_num = 0;
 	long *timekeep = new long[node_num];
 	struct hash_table_B { // each hash table keeptrack a bus, eg. n bus have n hash table
-		long *eat = new long[bus_num];
-		long *veh = new long[bus_num];
-		long *piv = new long[bus_num];
+		long *eat = new long[bus_num+2];
+		long *veh = new long[bus_num+2];
+		long *piv = new long[bus_num+2];
 	};
-	hash_table_B *htb = new hash_table_B[node_num];
+
+	hash_table_B *htb = new hash_table_B[node_num ];
+
 	mini_heap *heap = new mini_heap[edge_num + 1];
 	FILE *labin = fopen(lin_uv_file, "w");
 	FILE *labout = fopen(lout_uv_file, "w");
@@ -1259,7 +1272,7 @@ void build_index_uv(struct graph_data_out go_dat[], struct graph_data_in gi_dat[
 	}
 
 	while (order_ptr < node_num) { // for 1:N 
-
+		printf("node: %d order: %d  \n", node_order[order_ptr], order_ptr);
 		deg_num = g_dat_deg[node_order[order_ptr]].out_deg;
 		while (lab == 0) {
 
@@ -1296,7 +1309,7 @@ void build_index_uv(struct graph_data_out go_dat[], struct graph_data_in gi_dat[
 			}
 
 			if (t != -1) {// have found a td
-				printf("order: %d out-deg: %d t: %d \n", order_ptr, deg_num, t);
+				
 				deg_num--;
 				pt = t, deg = 0;
 				eflag[node_order[order_ptr]].eout[t_deg] = 1;
@@ -1334,9 +1347,9 @@ void build_index_uv(struct graph_data_out go_dat[], struct graph_data_in gi_dat[
 				}
 
 				while (hp < heap_ptr) { //dijk search
-					//printf("order: %d out-deg: %d pt: %d heap: %d/%d\n", order_ptr, deg_num, pt, hp, heap_ptr);
+					
 					flag = 0;
-					//	printf("ta: %d\n", heap[hp].ta);
+				
 
 					if (htb[heap[hp].x].eat[heap[hp].b] == 999999) flag = 1;
 					//update resp. htb of each edge 
@@ -1352,7 +1365,7 @@ void build_index_uv(struct graph_data_out go_dat[], struct graph_data_in gi_dat[
 							go_ptr = go_ptr->onext;
 							while (go_ptr != NULL) {
 								if (go_ptr->ostart_t >= htb[heap[hp].y].eat[heap[hp].b] && go_ptr->ob_id == heap[hp].b) {
-									if (go_ptr->oend_t < timekeep[go_ptr->to_node]){
+									if (go_ptr->oend_t < timekeep[go_ptr->to_node]) {
 										if (g_dat_deg[go_ptr->to_node].in_deg != 0 && go_ptr->to_node != node_order[order_ptr]) {
 											timekeep[go_ptr->to_node] = go_ptr->oend_t;
 											heap[heap_ptr].x = heap[hp].y;
@@ -1381,7 +1394,7 @@ void build_index_uv(struct graph_data_out go_dat[], struct graph_data_in gi_dat[
 									go_ptr = go_ptr->onext;
 								}
 								else {
-									*heap = sort_hp(heap, hp, heap_ptr - 1, 0);
+									*heap = sort_hp(heap, hp + 1, heap_ptr - 1, 0);
 									break;
 								}
 							}
@@ -1532,7 +1545,7 @@ void build_index_uv(struct graph_data_out go_dat[], struct graph_data_in gi_dat[
 			}
 
 			if (t != 999999) {// have found a ta
-				printf("order: %d in-deg: %d t: %d \n", order_ptr, deg_num, t);
+			
 				pt = t, deg = 0;
 				eflag[node_order[order_ptr]].ein[t_deg] = 1;
 				heap[heap_ptr].x = gi_hptr->from_node;// add min ta edge to heap
@@ -1569,7 +1582,7 @@ void build_index_uv(struct graph_data_out go_dat[], struct graph_data_in gi_dat[
 				}
 
 				while (hp < heap_ptr) { //dijk search
-					//printf("order: %d in-deg: %d pt: %d heap: %d/%d\n", order_ptr, deg_num, pt, hp, heap_ptr);
+				
 					flag = 0;
 
 
@@ -1587,7 +1600,7 @@ void build_index_uv(struct graph_data_out go_dat[], struct graph_data_in gi_dat[
 							gi_ptr = gi_ptr->inext;
 							while (gi_ptr != NULL) {
 								if (gi_ptr->iend_t <= htb[heap[hp].x].eat[heap[hp].b] && gi_ptr->ib_id == heap[hp].b) {
-									if (gi_ptr->istart_t > timekeep[gi_ptr->from_node]){
+									if (gi_ptr->istart_t > timekeep[gi_ptr->from_node]) {
 										if (g_dat_deg[gi_ptr->from_node].out_deg != 0 && gi_ptr->from_node != node_order[order_ptr]) {
 											timekeep[gi_ptr->from_node] = gi_ptr->istart_t;
 											heap[heap_ptr].x = gi_ptr->from_node;
@@ -1616,7 +1629,7 @@ void build_index_uv(struct graph_data_out go_dat[], struct graph_data_in gi_dat[
 									gi_ptr = gi_ptr->inext;
 								}
 								else {
-									*heap = sort_hp2(heap, hp, heap_ptr - 1, 0);
+									*heap = sort_hp2(heap, hp + 1, heap_ptr - 1, 0);
 									break;
 								}
 							}
@@ -1766,7 +1779,7 @@ void build_index_c(struct graph_data_out go_dat[], struct graph_data_in gi_dat[]
 	}
 
 	while (order_ptr < node_num) { // for 1:N 
-
+		printf("node: %d order: %d  \n", node_order[order_ptr], order_ptr);
 		deg_num = g_dat_deg[node_order[order_ptr]].out_deg;
 		while (lab == 0) {
 
@@ -1802,7 +1815,7 @@ void build_index_c(struct graph_data_out go_dat[], struct graph_data_in gi_dat[]
 			}
 
 			if (t != -1) {// have found a td
-				printf("order: %d out-deg: %d t: %d \n", order_ptr, deg_num, t);
+				
 				deg_num--;
 				pt = t, deg = 0;
 				eflag[node_order[order_ptr]].eout[t_deg] = 1;
@@ -1842,7 +1855,7 @@ void build_index_c(struct graph_data_out go_dat[], struct graph_data_in gi_dat[]
 				}
 
 				while (hp < heap_ptr) { //dijk search
-					//printf("order: %d out-deg: %d pt: %d heap: %d/%d\n", order_ptr, deg_num, pt, hp, heap_ptr);
+					
 					flag = 0;
 
 
@@ -1859,12 +1872,13 @@ void build_index_c(struct graph_data_out go_dat[], struct graph_data_in gi_dat[]
 							htb[heap[hp].y].veh = -1;
 						}
 						htb[heap[hp].y].cost = heap[hp].cost + htb[heap[hp].x].cost;
+					
 						if (g_dat_deg[heap[hp].y].out_deg > 0) {
 							go_ptr = &go_dat[heap[hp].y];
 							go_ptr = go_ptr->onext;
 							while (go_ptr != NULL) {
 								if (go_ptr->ostart_t >= htb[heap[hp].y].eat) {
-									if (go_ptr->oend_t < timekeep[go_ptr->to_node]){
+									if (go_ptr->oend_t < timekeep[go_ptr->to_node]) {
 										if (g_dat_deg[go_ptr->to_node].in_deg != 0 && go_ptr->to_node != node_order[order_ptr]) {
 											timekeep[go_ptr->to_node] = go_ptr->oend_t;
 											heap[heap_ptr].x = heap[hp].y;
@@ -1897,7 +1911,7 @@ void build_index_c(struct graph_data_out go_dat[], struct graph_data_in gi_dat[]
 									go_ptr = go_ptr->onext;
 								}
 								else {
-									*heap = sort_hp(heap, hp, heap_ptr - 1, 1);
+									*heap = sort_hp(heap, hp + 1, heap_ptr - 1, 1);
 									break;
 								}
 
@@ -1917,9 +1931,11 @@ void build_index_c(struct graph_data_out go_dat[], struct graph_data_in gi_dat[]
 						if (iind_ptr1->iindnt != NULL) {
 							iind_ptr1 = iind_ptr1->iindnt;
 							while (iind_ptr1 != NULL) {
-								if (iind_ptr1->iui == node_order[order_ptr] && iind_ptr1->cost <= htb[i].cost) {
-									flag = 1;
-									break;
+								if (iind_ptr1->iui == node_order[order_ptr] && iind_ptr1->ita <= htb[i].eat) {
+									if (iind_ptr1->cost <= htb[i].cost) {
+										flag = 1;
+										break;
+									}
 								}
 
 								if (iind_ptr1->iindnt != NULL) {
@@ -1948,9 +1964,11 @@ void build_index_c(struct graph_data_out go_dat[], struct graph_data_in gi_dat[]
 								if (iind_ptr1->iui == oind_ptr1->oui) {
 
 									if (oind_ptr1->ota < iind_ptr1->itd) {
-										if ((oind_ptr1->cost + iind_ptr1->cost) <= htb[i].cost) {
-											flag = 1;
-											break;
+										if (oind_ptr1->otd >= pt && iind_ptr1->ita <= htb[i].eat) {
+											if ((oind_ptr1->cost + iind_ptr1->cost) <= htb[i].cost) {
+												flag = 1;
+												break;
+											}
 										}
 									}
 									iind_ptr1 = iind_ptr1->iindnt;
@@ -1995,7 +2013,7 @@ void build_index_c(struct graph_data_out go_dat[], struct graph_data_in gi_dat[]
 							iind_ptr2->iindnt = NULL;
 							iind_ptr1->iindnt = iind_ptr2;
 							fprintf(labin, "%ld %ld %ld %ld %ld %ld %ld\n", i, iind_ptr2->iui, iind_ptr2->itd, iind_ptr2->ita, iind_ptr2->ibv, iind_ptr2->ipv, iind_ptr2->cost);
-							//	printf("in: i: %d: ui: %ld td: %ld ta: %ld bv: %ld pv: %ld c: %ld\n", i, iind_ptr2->iui, iind_ptr2->itd, iind_ptr2->ita, iind_ptr2->ibv, iind_ptr2->ipv,iind_ptr2->cost);
+							//	printf("in: i: %d: ui: %ld td: %ld ta: %ld bv: %ld pv: %ld c: %ld\n", i, iind_ptr2->iui, iind_ptr2->itd/3600, iind_ptr2->ita/3600, iind_ptr2->ibv, iind_ptr2->ipv,iind_ptr2->cost);
 						}
 						else {
 							flag = 0;
@@ -2043,7 +2061,7 @@ void build_index_c(struct graph_data_out go_dat[], struct graph_data_in gi_dat[]
 			}
 
 			if (t != 999999) {// have found a ta
-				printf("order: %d in-deg: %d t: %d \n", order_ptr, deg_num, t);
+		
 				pt = t, deg = 0;
 				eflag[node_order[order_ptr]].ein[t_deg] = 1;
 				heap[heap_ptr].x = gi_hptr->from_node;// add min ta edge to heap
@@ -2082,7 +2100,7 @@ void build_index_c(struct graph_data_out go_dat[], struct graph_data_in gi_dat[]
 				}
 
 				while (hp < heap_ptr) { //dijk search
-					//printf("order: %d in-deg: %d pt: %d heap: %d/%d\n", order_ptr, deg_num, pt, hp, heap_ptr);
+				
 					flag = 0;
 
 
@@ -2099,13 +2117,13 @@ void build_index_c(struct graph_data_out go_dat[], struct graph_data_in gi_dat[]
 							htb[heap[hp].x].veh = -1;
 						}
 						htb[heap[hp].x].cost = heap[hp].cost + htb[heap[hp].y].cost;
-
+				
 						if (g_dat_deg[heap[hp].x].in_deg > 0) {
 							gi_ptr = &gi_dat[heap[hp].x];
 							gi_ptr = gi_ptr->inext;
 							while (gi_ptr != NULL) {
 								if (gi_ptr->iend_t <= htb[heap[hp].x].eat) {
-									if (gi_ptr->istart_t > timekeep[gi_ptr->from_node]){
+									if (gi_ptr->istart_t > timekeep[gi_ptr->from_node]) {
 										if (g_dat_deg[gi_ptr->from_node].out_deg != 0 && gi_ptr->from_node != node_order[order_ptr]) {
 											timekeep[gi_ptr->from_node] = gi_ptr->istart_t;
 											heap[heap_ptr].x = gi_ptr->from_node;
@@ -2139,7 +2157,7 @@ void build_index_c(struct graph_data_out go_dat[], struct graph_data_in gi_dat[]
 									gi_ptr = gi_ptr->inext;
 								}
 								else {
-									*heap = sort_hp2(heap, hp, heap_ptr - 1, 1);
+									*heap = sort_hp2(heap, hp + 1, heap_ptr - 1, 1);
 									break;
 								}
 							}
@@ -2151,15 +2169,17 @@ void build_index_c(struct graph_data_out go_dat[], struct graph_data_in gi_dat[]
 				for (i = 0; i < node_num; i++) { // insert labels
 
 					if (i != node_order[order_ptr] && htb[i].cost != 0) {
-
+					//	printf("%d ldp: %d c: %d\n", i, htb[i].eat / 3600, htb[i].cost);
 						flag = 0;
 						oind_ptr1 = &label_out[i];
 						if (oind_ptr1->oindnt != NULL) {
 							oind_ptr1 = oind_ptr1->oindnt;
 							while (oind_ptr1 != NULL) {
-								if (oind_ptr1->oui == node_order[order_ptr] && oind_ptr1->cost <= htb[i].cost) {
-									flag = 1;
-									break;
+								if (oind_ptr1->oui == node_order[order_ptr] && oind_ptr1->otd >= htb[i].eat) {
+									if (oind_ptr1->cost <= htb[i].cost) {
+										flag = 1;
+										break;
+									}
 								}
 
 								if (oind_ptr1->oindnt != NULL) {
@@ -2187,9 +2207,11 @@ void build_index_c(struct graph_data_out go_dat[], struct graph_data_in gi_dat[]
 								if (iind_ptr1->iui == oind_ptr1->oui) {
 
 									if (oind_ptr1->ota < iind_ptr1->itd) {
-										if (oind_ptr1->cost + iind_ptr1->cost <= htb[i].cost) {
-											flag = 1;
-											break;
+										if (oind_ptr1->otd >= htb[i].eat && iind_ptr1->ita <= pt) {
+											if (oind_ptr1->cost + iind_ptr1->cost <= htb[i].cost) {
+												flag = 1;
+												break;
+											}
 										}
 									}
 									iind_ptr1 = iind_ptr1->iindnt;
@@ -2234,7 +2256,7 @@ void build_index_c(struct graph_data_out go_dat[], struct graph_data_in gi_dat[]
 							oind_ptr2->oindnt = NULL;
 							oind_ptr1->oindnt = oind_ptr2;
 							fprintf(labout, "%ld %ld %ld %ld %ld %ld %ld\n", i, oind_ptr2->oui, oind_ptr2->otd, oind_ptr2->ota, oind_ptr2->obv, oind_ptr2->opv, oind_ptr2->cost);
-							//		printf("out: i: %ld: ui: %ld td: %ld ta: %ld bv: %ld pv: %ld c: %ld\n", i, oind_ptr2->oui, oind_ptr2->otd, oind_ptr2->ota, oind_ptr2->obv, oind_ptr2->opv,oind_ptr2->cost);
+							//		printf("out: i: %ld: ui: %ld td: %ld ta: %ld bv: %ld pv: %ld c: %ld\n", i, oind_ptr2->oui, oind_ptr2->otd/3600, oind_ptr2->ota/3600, oind_ptr2->obv, oind_ptr2->opv,oind_ptr2->cost);
 						}
 						else {
 							flag = 0;
@@ -3849,3 +3871,4 @@ void print_path() {
 		}
 	}
 }
+
